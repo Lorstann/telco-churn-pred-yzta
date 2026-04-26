@@ -89,6 +89,17 @@ def _safe_artifacts() -> Artifacts:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
+@app.get("/")
+def root() -> dict[str, str]:
+    """Root endpoint for platform health visibility."""
+    return {
+        "service": "telco-churn-api",
+        "status": "ok",
+        "health": "/health",
+        "docs": "/docs",
+    }
+
+
 def _strip_input_fields(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for entry in results:
         entry.pop("input", None)

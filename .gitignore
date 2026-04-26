@@ -22,6 +22,7 @@ env/
 models/*.joblib
 models/*.pkl
 models/optuna_study.db
+!models/champion_pipeline.joblib
 reports/figures/
 reports/model_curves/
 *.png
