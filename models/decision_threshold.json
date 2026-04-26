@@ -1,0 +1,6 @@
+{
+  "threshold": 0.6040273854759363,
+  "objective": "f1_maximization",
+  "selection_metric": "f1",
+  "roc_auc_reference": 0.8476950875004586
+}

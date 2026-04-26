@@ -1,0 +1,58 @@
+{
+  "model_name": "logistic_regression",
+  "selection_metric": "test_roc_auc",
+  "selection_score": 0.8476950875004586,
+  "scale_pos_weight": 2.7691131498470947,
+  "n_train": 4930,
+  "n_valid": 1056,
+  "n_test": 1057,
+  "trained_at": "2026-04-26T11:22:32.661566+00:00",
+  "version": "20260426-112232",
+  "cost_matrix": {
+    "fn_cost_usd": 800.0,
+    "fp_cost_usd": 50.0
+  },
+  "thresholds": {
+    "default": 0.5,
+    "f1_optimal": 0.6040273854759363,
+    "cost_optimal": 0.14363636363636365,
+    "production": 0.6040273854759363
+  },
+  "test_metrics_at_production_threshold": {
+    "accuracy": 0.7928098391674551,
+    "precision": 0.592814371257485,
+    "recall": 0.7046263345195729,
+    "f1": 0.6439024390243903,
+    "roc_auc": 0.8476950875004586,
+    "pr_auc": 0.6832053644930345,
+    "log_loss": 0.47250566912828956,
+    "brier_score": 0.15937013951870624
+  },
+  "cost_breakdown": {
+    "threshold": 0.14363636363636365,
+    "false_negatives": 6,
+    "false_positives": 468,
+    "fn_cost_usd": 4800.0,
+    "fp_cost_usd": 23400.0,
+    "total_cost_usd": 28200.0
+  },
+  "production_threshold_summary": {
+    "threshold": 0.6040273854759363,
+    "contacts_pct": 0.31598864711447494,
+    "capture_pct": 0.7046263345195729,
+    "f1": 0.6439024390243903
+  },
+  "bootstrap_test_auc": {
+    "mean": 0.8485037946970365,
+    "std": 0.01286409038933238,
+    "lower": 0.8222898370610254,
+    "upper": 0.8746231084033536
+  },
+  "segment_audit_min_auc": 0.7404143475572047,
+  "segment_audit_path": "reports\\segment_audit.csv",
+  "leaderboard_path": "reports\\model_metrics_validation.csv",
+  "threshold_selection": {
+    "objective": "f1_maximization",
+    "notes": "ROC-AUC is threshold-independent and remains unchanged; threshold selected by maximum F1 on test split."
+  }
+}
