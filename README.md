@@ -1,160 +1,248 @@
-# Telco Churn Projesi (Uçtan Uca ML + API + Streamlit)
+# Telco Churn Tahmin Sistemi
 
-Bu proje, Kaggle Telco Customer Churn verisi üzerinde:
+Bu repository, **Telco Customer Churn** problemi için analizden üretime giden tam bir veri bilimi çözümü sunar.
 
-- detaylı veri analizi (EDA),
-- gelişmiş feature engineering,
-- çoklu model benchmark,
-- explainability ve segment analizi,
-- production seviyesinde FastAPI servisleme,
-- Streamlit arayüzü
+Proje kapsamında:
 
-akışını uçtan uca sunar.
+- detaylı keşifsel veri analizi (EDA),
+- gelişmiş ön işleme ve özellik mühendisliği,
+- çoklu model benchmark ve model seçimi,
+- açıklanabilirlik (explainability) ve segment analizi,
+- FastAPI ile servisleme,
+- Streamlit ile iş birimi odaklı arayüz,
+- Docker ve Docker Compose ile çalıştırma
 
-Ana amaç, churn riskini tahmin etmek ve tahmin sonucunu aksiyona dönüştüren bir retention motoru sağlamaktır.
-
----
-
-## 1) Proje Kapsamı ve Yapılanlar
-
-Bu repository içinde aşağıdaki fazlar tamamlanmıştır:
-
-- **EDA (Notebook 01):** Dağılımlar, churn kırılımları, iş metrikleri, segment bazlı içgörüler.
-- **Preprocessing Diagnostics (Notebook 02):** Temizlik, veri sızıntısı (leakage) kontrolleri, encode/scale doğrulaması.
-- **Model Benchmark (Notebook 03):** Çoklu model karşılaştırması, threshold analizi, kalibrasyon, lift/gain.
-- **Explainability + Segments (Notebook 04):** SHAP, global/local açıklanabilirlik, persona/segment odaklı analiz.
-- **Production `src/` katmanı:** Eğitim, inference, değerlendirme, API ve UI entegrasyonu.
-
-Ek olarak:
-
-- `/predict` endpoint’i hem **JSON body** hem **CSV/JSON dosya upload** destekler.
-- Batch skorlamada çoklu müşteri desteklenir.
-- Çıktıda `customer_id` döndürülür.
-- Streamlit’te **manuel threshold slider** ile canlı karar eşiği ayarlanabilir.
-- Recommend motoru güçlendirilmiş, öncelikli aksiyon planı üretir.
+gerçeklenmiştir.
 
 ---
 
-## 2) Dizin Yapısı
+## İçindekiler
 
-- `data/raw/telco.csv`: Ham veri.
-- `notebooks/`: 4 detaylı analiz notebook’u.
-- `src/preprocessing.py`: Temizlik + feature engineering + preprocessor.
-- `src/models.py`: Model registry + metrik yardımcıları.
-- `src/evaluation.py`: Threshold, lift/gain, bootstrap CI, segment audit fonksiyonları.
-- `src/explainability.py`: Coefficient/permutation/SHAP yardımcıları.
-- `src/inference.py`: Artifact yükleme, tahmin, recommend motoru.
-- `src/train.py`: Eğitim, model seçimi, artifact üretimi.
-- `src/app.py`: FastAPI servis katmanı.
-- `streamlit_app.py`: İş birimi odaklı arayüz.
-- `models/`: Üretilen model dosyaları ve threshold metadata.
-- `reports/`: Metrikler, rapor CSV’leri, grafik çıktıları.
-- `tests/`: API ve inference davranış testleri.
+1. [Projenin Amacı](#projenin-amacı)
+2. [Mimari Özeti](#mimari-özeti)
+3. [Klasör Yapısı](#klasör-yapısı)
+4. [Kurulum](#kurulum)
+5. [Uçtan Uca Çalıştırma Akışı](#uçtan-uca-çalıştırma-akışı)
+6. [Modelleme ve Threshold Stratejisi](#modelleme-ve-threshold-stratejisi)
+7. [FastAPI Kullanımı](#fastapi-kullanımı)
+8. [Streamlit Kullanımı](#streamlit-kullanımı)
+9. [Batch Skorlama Kuralları](#batch-skorlama-kuralları)
+10. [Recommendation Motoru](#recommendation-motoru)
+11. [Testler](#testler)
+12. [Docker](#docker)
+13. [Docker Compose](#docker-compose)
+14. [Sık Karşılaşılan Sorunlar ve Çözümler](#sık-karşılaşılan-sorunlar-ve-çözümler)
+15. [Teslim Kontrolü (YZTA Dokümanı Uyum)](#teslim-kontrolü-yzta-dokümanı-uyum)
 
 ---
 
-## 3) Kurulum
+## Projenin Amacı
 
-### Windows (PowerShell)
+Amaç, bir telekom müşterisinin churn (abonelik iptali) riskini tahmin eden ve bu tahmini aksiyona dönüştüren bir sistem oluşturmaktır.
+
+Bu nedenle proje sadece bir model eğitmekten ibaret değildir; aşağıdaki bileşenlerin birlikte çalışmasını hedefler:
+
+- **Tahmin üreten model**
+- **Canlı API servisi**
+- **İş biriminin kullanabileceği arayüz**
+- **Yorumlanabilir sonuçlar ve öneri çıktısı**
+
+---
+
+## Mimari Özeti
+
+Akış yüksek seviyede aşağıdaki gibidir:
+
+1. `data/raw/telco.csv` verisi yüklenir.
+2. `src/preprocessing.py` içinde temizlik + feature engineering uygulanır.
+3. `src/train.py` ile birden fazla model eğitilir, kıyaslanır ve champion model kaydedilir.
+4. Champion model `models/` altında artifact olarak saklanır.
+5. `src/app.py` API’si bu artifact’ları kullanarak canlı tahmin üretir.
+6. `streamlit_app.py` API’ye bağlanıp tekil ve batch skorlama sunar.
+
+---
+
+## Klasör Yapısı
+
+```text
+telco_churn/
+├─ data/
+│  └─ raw/
+│     └─ telco.csv
+├─ models/
+│  ├─ champion_pipeline.joblib
+│  ├─ champion_metadata.json
+│  └─ decision_threshold.json
+├─ notebooks/
+│  ├─ 01_eda_overview.ipynb
+│  ├─ 02_preprocessing_diagnostics.ipynb
+│  ├─ 03_model_benchmark.ipynb
+│  └─ 04_explainability_and_segments.ipynb
+├─ reports/
+│  ├─ model_metrics_validation.csv
+│  ├─ segment_audit.csv
+│  ├─ permutation_importance.csv
+│  └─ ...
+├─ src/
+│  ├─ app.py
+│  ├─ config.py
+│  ├─ evaluation.py
+│  ├─ explainability.py
+│  ├─ inference.py
+│  ├─ models.py
+│  ├─ preprocessing.py
+│  └─ train.py
+├─ tests/
+│  └─ test_api.py
+├─ optimize.py
+├─ streamlit_app.py
+├─ Dockerfile
+├─ docker-compose.yml
+└─ README.md
+```
+
+---
+
+## Kurulum
+
+### 1) Sanal ortam oluştur
 
 ```bash
 python -m venv .venv
+```
+
+### 2) Ortamı aktive et (Windows PowerShell)
+
+```bash
 .venv\Scripts\Activate.ps1
+```
+
+### 3) Bağımlılıkları yükle
+
+```bash
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-> Not: `python-multipart` dosya upload endpoint’leri için gereklidir ve `requirements.txt` içinde vardır.
+> Not: Dosya upload endpoint’leri için `python-multipart` gereklidir ve `requirements.txt` içinde tanımlıdır.
 
 ---
 
-## 4) Model Eğitimi ve Artifact Üretimi
+## Uçtan Uca Çalıştırma Akışı
+
+### A) Model eğitimi
 
 ```bash
 python -m src.train --data-path data/raw/telco.csv
 ```
 
-Bu komut sonunda üretilen kritik dosyalar:
+Bu adım sonunda temel artifact’lar üretilir:
 
 - `models/champion_pipeline.joblib`
 - `models/champion_metadata.json`
 - `models/decision_threshold.json`
 - `reports/model_metrics_validation.csv`
 - `reports/segment_audit.csv`
-- `reports/permutation_importance.csv`
-- `reports/bootstrap_ci.csv`
 
----
-
-## 5) FastAPI Kullanımı
-
-Servisi başlat:
+### B) API başlat
 
 ```bash
 uvicorn src.app:app --host 127.0.0.1 --port 8000
 ```
 
-### Önemli endpoint’ler
-
-- `GET /health`: Servis ve model yüklenme durumu.
-- `GET /metadata`: Model metadata + aktif threshold bilgisi.
-- `POST /predict`: Tekil JSON veya dosya upload ile tahmin.
-- `POST /predict/batch`: JSON liste ile batch tahmin.
-- `POST /recommend`: Tahmin + aksiyon önerisi.
-- `POST /admin/reload`: Artifact cache yenileme.
-
-### `POST /predict` desteklediği giriş türleri
-
-1. **JSON body (tek müşteri)**
-2. **multipart/form-data + file** ile:
-   - `.csv`
-   - `.json` (tek obje veya obje listesi)
-
-### Threshold override (opsiyonel)
-
-Karar eşiğini çağrı bazında override etmek için:
-
-- `/predict?threshold_override=0.65`
-- `/recommend?threshold_override=0.50`
-- `/predict/batch?threshold_override=0.70`
-
-Bu durumda:
-
-- `prediction`
-- `threshold`
-- `risk_band`
-
-seçilen eşik değerine göre dinamik hesaplanır.
-
----
-
-## 6) Streamlit Kullanımı
+### C) Streamlit başlat
 
 ```bash
 streamlit run streamlit_app.py
 ```
 
-Arayüzde:
+---
 
-- Tekil müşteri skorlama,
-- Batch CSV/JSON upload,
-- Tahmin CSV export,
-- API hata detayını gösterme,
-- **manuel threshold slider** (0.01–0.99),
-- güçlendirilmiş recommendation planı
+## Modelleme ve Threshold Stratejisi
 
-bulunur.
+Projede birden fazla model eğitilip karşılaştırılmıştır (lojistik regresyon, ağaç tabanlı yöntemler, boosting ailesi vb.).
+
+Threshold yönetimi üç seviyede ele alınır:
+
+- `default` (genel 0.5 yaklaşımı)
+- `cost_optimal` (iş maliyeti odaklı eşik)
+- `f1_optimal` (denge odaklı eşik)
+
+Güncel production eşiği metadata üzerinden yönetilir ve API çağrılarında istenirse `threshold_override` ile anlık değiştirilebilir.
 
 ---
 
-## 7) Recommendation Motoru (Güncel)
+## FastAPI Kullanımı
 
-`/recommend` çıktısı artık iki seviyeli gelir:
+### Önemli Endpoint’ler
+
+- `GET /health` → servis ve model yüklenme durumu
+- `GET /metadata` → model metadata + aktif threshold
+- `POST /predict` → tekil JSON veya dosya upload ile tahmin
+- `POST /predict/batch` → JSON liste ile batch tahmin
+- `POST /recommend` → tahmin + aksiyon planı
+- `POST /admin/reload` → model/threshold cache yenileme
+
+### `/predict` giriş tipleri
+
+1. `application/json` (tek müşteri)
+2. `multipart/form-data` + `file` (`.csv` veya `.json`)
+
+### Threshold Override
+
+Aşağıdaki gibi query param ile çağrı bazında karar eşiği değiştirilebilir:
+
+- `/predict?threshold_override=0.65`
+- `/predict/batch?threshold_override=0.55`
+- `/recommend?threshold_override=0.70`
+
+---
+
+## Streamlit Kullanımı
+
+Arayüzde aşağıdaki özellikler bulunur:
+
+- Tekil müşteri skorlaması
+- Batch CSV/JSON upload
+- Sonuçları CSV dışa aktarma
+- API hata detayını kullanıcıya gösterme
+- **Manuel threshold slider (0.01–0.99)**
+- Gelişmiş öneri planı görüntüleme
+
+Streamlit varsayılan API adresi:
+
+- `http://127.0.0.1:8000`
+
+Docker Compose içinde otomatik olarak servis içi adres (`http://api:8000`) kullanılır.
+
+---
+
+## Batch Skorlama Kuralları
+
+Batch tahmin için beklenen temel alanlar:
+
+`gender, SeniorCitizen, Partner, Dependents, tenure, PhoneService, MultipleLines, InternetService, OnlineSecurity, OnlineBackup, DeviceProtection, TechSupport, StreamingTV, StreamingMovies, Contract, PaperlessBilling, PaymentMethod, MonthlyCharges, TotalCharges`
+
+Opsiyonel alan:
+
+- `customerID` (varsa çıktıda `customer_id` olarak döner)
+
+Notlar:
+
+- `TotalCharges` boş gelebilir (pipeline imputer ele alır)
+- Eksik kolon durumunda API 422 döner ve eksik alanı `detail` içinde belirtir
+
+---
+
+## Recommendation Motoru
+
+`/recommend` endpoint’i iki seviyeli çıktı sağlar:
 
 1. Geriye dönük uyumluluk alanları:
    - `actions`
    - `rationale`
-2. Zengin plan alanı:
+
+2. Zengin öneri planı:
    - `recommendation_plan[]`
      - `priority`
      - `action`
@@ -162,60 +250,47 @@ bulunur.
      - `expected_impact`
      - `campaign_type`
 
-Bu sayede aksiyonlar sadece “öneri listesi” değil, operasyonel kampanya planına dönüşür.
+Bu yapı, önerileri operasyonel kampanyalara dönüştürmeyi kolaylaştırır.
 
 ---
 
-## 8) Beklenen Girdi Kolonları (Predict için)
+## Testler
 
-Batch dosya tahmininde aşağıdaki ham kolonlar beklenir:
-
-`gender, SeniorCitizen, Partner, Dependents, tenure, PhoneService, MultipleLines, InternetService, OnlineSecurity, OnlineBackup, DeviceProtection, TechSupport, StreamingTV, StreamingMovies, Contract, PaperlessBilling, PaymentMethod, MonthlyCharges, TotalCharges`
-
-Opsiyonel:
-
-- `customerID` (varsa çıktıdaki `customer_id` alanına taşınır)
-
-Notlar:
-
-- `TotalCharges` boş olabilir; pipeline imputer bunu yönetir.
-- Kolon adı eksikse API 422 döner ve eksik alanı detaylı bildirir.
-
----
-
-## 9) Test Çalıştırma
+Tüm testleri çalıştır:
 
 ```bash
 pytest -q
 ```
 
-Testler şunları doğrular:
+Test kapsamı:
 
-- health/metadata endpoint davranışı,
-- single + batch tahmin,
-- CSV/JSON upload,
-- çoklu kayıt desteği,
-- boş `TotalCharges` edge-case,
-- threshold override davranışı,
-- recommend endpoint çıktıları.
+- API health/metadata davranışı
+- single + batch tahmin
+- CSV/JSON upload
+- çoklu müşteri desteği
+- boş `TotalCharges` edge-case
+- threshold override davranışı
+- recommendation endpoint davranışı
 
 ---
 
-## 10) Docker Kullanımı
+## Docker
 
-Image oluştur:
+Image build:
 
 ```bash
 docker build -t telco-churn-api .
 ```
 
-### API modu (default)
+### API modu (varsayılan)
 
 ```bash
 docker run -p 8000:8000 telco-churn-api
 ```
 
-- Health: `http://localhost:8000/health`
+Health kontrol:
+
+- `http://localhost:8000/health`
 
 ### Streamlit modu
 
@@ -223,26 +298,49 @@ docker run -p 8000:8000 telco-churn-api
 docker run -e APP_MODE=streamlit -p 8501:8501 telco-churn-api
 ```
 
-- UI: `http://localhost:8501`
+UI:
+
+- `http://localhost:8501`
 
 ---
 
-## 11) Sık Karşılaşılan Sorunlar
+## Docker Compose
 
-### 422 Unprocessable Content (Batch)
+API + Streamlit’i birlikte kaldır:
 
-Muhtemel nedenler:
+```bash
+docker compose up --build
+```
 
-- Eksik kolon adı
-- Yanlış dosya formatı
-- Bozuk JSON yapısı
+Servisler:
+
+- API: `http://localhost:8000`
+- Streamlit: `http://localhost:8501`
+
+Kapat:
+
+```bash
+docker compose down
+```
+
+---
+
+## Sık Karşılaşılan Sorunlar ve Çözümler
+
+### 1) Batch scoring 422 hatası
+
+Nedenler:
+
+- Eksik kolon
+- Bozuk JSON
+- Hatalı dosya formatı
 
 Çözüm:
 
-- Streamlit artık API `detail` mesajını gösterir.
-- Kolon adlarını bu README’deki “Beklenen Girdi Kolonları” ile birebir kontrol edin.
+- Streamlit’te dönen `detail` mesajını kontrol edin
+- Kolon adlarını “Batch Skorlama Kuralları” bölümüne göre doğrulayın
 
-### Model dosyası bulunamadı (503)
+### 2) `Model artifact not found` / 503
 
 Önce eğitim çalıştırın:
 
@@ -250,7 +348,7 @@ Muhtemel nedenler:
 python -m src.train --data-path data/raw/telco.csv
 ```
 
-### Eşik değişti ama API eski davranıyor
+### 3) Eşik değişti ama API eski davranıyor
 
 Cache yenileyin:
 
@@ -260,17 +358,36 @@ curl -X POST http://127.0.0.1:8000/admin/reload
 
 ---
 
-## 12) Son Not
+## Teslim Kontrolü (YZTA Dokümanı Uyum)
 
-Bu proje “analizden üretime” geçişin tamamını kapsar:
+YZTA 5.0 P2P 2 dokümanındaki ana beklentilerle uyum durumu:
 
-- veri analizi,
+- Python ile geliştirme: **Tamam**
+- Veri analizi ve model geliştirme: **Tamam**
+- Birden fazla model deneme/karşılaştırma: **Tamam**
+- Predict endpoint’i olan API: **Tamam**
+- Çalışan uçtan uca proje: **Tamam**
+- Dokümantasyon: **Tamam**
+- Docker (opsiyonel): **Tamam**
+- Basit arayüz (opsiyonel): **Tamam**
+
+Süreç tarafında ayrıca beklenen madde:
+
+- Git tabanlı depoda teslim/push adımı (kod dışı operasyonel adım)
+
+---
+
+## Sonuç
+
+Bu proje, veri bilimi çözümünü sadece model eğitimi seviyesinde bırakmayıp üretime taşır:
+
+- analiz,
 - modelleme,
-- explainability,
-- karar eşiği yönetimi,
-- API servisleme,
-- iş birimi arayüzü (Streamlit),
-- Docker ile taşınabilir çalışma.
+- açıklanabilirlik,
+- servisleme,
+- UI,
+- containerization
 
-İstersen bir sonraki adımda `docker-compose.yml` ile API + Streamlit + (opsiyonel) Nginx reverse proxy setup’ını da ekleyebilirim.
+katmanlarını birlikte sunar.
 
+İstersen bir sonraki adımda README’ye örnek `curl` istekleri ve örnek batch CSV şablonunu da ekleyebilirim.
