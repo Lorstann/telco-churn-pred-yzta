@@ -101,7 +101,7 @@ def _build_payload() -> dict[str, object]:
 st.title("📡 Telco Churn Intelligence Studio")
 st.caption("Production scoring, recommendations, and batch file scoring from one UI.")
 
-default_api_base = os.getenv("STREAMLIT_API_BASE", "http://127.0.0.1:8000")
+default_api_base = os.getenv("STREAMLIT_API_BASE", "https://telco-churn-pred-yzta-production.up.railway.app/")
 api_base = st.sidebar.text_input("FastAPI base URL", value=default_api_base)
 predict_url = f"{api_base.rstrip('/')}/predict"
 recommend_url = f"{api_base.rstrip('/')}/recommend"
